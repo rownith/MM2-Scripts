@@ -99,11 +99,11 @@ AimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 Instance.new("UICorner", AimbotButton).CornerRadius = UDim.new(0, 6)
 
--- 4. Exclusive Murderer "Bring All" Exploit Button
+-- 4. Exclusive Murderer "Bring All" Indicator Status Button
 local BringAllButton = Instance.new("TextButton", MainMenu)
 BringAllButton.Size = UDim2.new(0, 150, 0, 40)
 BringAllButton.Position = UDim2.new(0, 15, 0, 185)
-BringAllButton.Text = "Bring All Players"
+BringAllButton.Text = "Press [C] to Bring"
 BringAllButton.Font = Enum.Font.SourceSansBold
 BringAllButton.TextSize = 14
 BringAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -181,11 +181,14 @@ AimbotButton.MouseButton1Click:Connect(function()
     AimbotButton.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
--- Core Function to Teleport All Players
+-- Core Function to Teleport All Players with Button Flash
 local function executeBringAll()
     if getRoleColor(LocalPlayer) == Colors.Murderer and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if myHrp then
+            BringAllButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            BringAllButton.Text = "BRINGING PLAYERS..."
+            
             for _, targetPlayer in ipairs(Players:GetPlayers()) do
                 if targetPlayer ~= LocalPlayer and targetPlayer.Character then
                     local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -195,6 +198,11 @@ local function executeBringAll()
                     end
                 end
             end
+            
+            task.delay(0.4, function()
+                BringAllButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+                BringAllButton.Text = "Press [C] to Bring"
+            end)
         end
     end
 end
@@ -248,11 +256,10 @@ RunService.RenderStepped:Connect(function()
 end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.UserInputType == Enum.UserInputType.MouseButton2 then
-        local myRole = getRoleColor(LocalPlayer)
-        if myRole == Colors.Sheriff then
+    if not processed then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 and getRoleColor(LocalPlayer) == Colors.Sheriff then
             holdingAimKey = true
-        elseif myRole == Colors.Murderer then
+        elseif input.KeyCode == Enum.KeyCode.C and getRoleColor(LocalPlayer) == Colors.Murderer then
             executeBringAll()
         end
     end
