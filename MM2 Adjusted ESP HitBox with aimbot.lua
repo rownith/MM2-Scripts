@@ -44,7 +44,7 @@ if not success then
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Main Management Panel (Dynamically resizes depending on role)
+-- Main Management Panel
 local MainMenu = Instance.new("Frame", ScreenGui)
 MainMenu.Size = UDim2.new(0, 180, 0, 190)
 MainMenu.Position = UDim2.new(0, 30, 0, 80)
@@ -181,8 +181,8 @@ AimbotButton.MouseButton1Click:Connect(function()
     AimbotButton.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
--- "Bring All" Exploit Mechanics
-BringAllButton.MouseButton1Click:Connect(function()
+-- Core Function to Teleport All Players
+local function executeBringAll()
     if getRoleColor(LocalPlayer) == Colors.Murderer and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if myHrp then
@@ -191,14 +191,15 @@ BringAllButton.MouseButton1Click:Connect(function()
                     local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
                     local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
                     if targetHrp and targetHumanoid and targetHumanoid.Health > 0 then
-                        -- Teleport player 3 studs directly in front of you
                         targetHrp.CFrame = myHrp.CFrame * CFrame.new(0, 0, -3)
                     end
                 end
             end
         end
     end
-end)
+end
+
+BringAllButton.MouseButton1Click:Connect(executeBringAll)
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.Insert then
@@ -212,10 +213,10 @@ task.spawn(function()
         task.wait(0.5)
         if getRoleColor(LocalPlayer) == Colors.Murderer then
             BringAllButton.Visible = true
-            MainMenu.Size = UDim2.new(0, 180, 0, 240) -- Tall view for Murderer items
+            MainMenu.Size = UDim2.new(0, 180, 0, 240)
         else
             BringAllButton.Visible = false
-            MainMenu.Size = UDim2.new(0, 180, 0, 190) -- Compact view for normal roles
+            MainMenu.Size = UDim2.new(0, 180, 0, 190)
         end
     end
 end)
@@ -229,7 +230,7 @@ local function getMurderer()
     return nil
 end
 
--- --- PLATFORM HYBRID AIMBOT ENGINE ---
+-- --- PLATFORM HYBRID ENGINE ---
 local holdingAimKey = false
 
 RunService.RenderStepped:Connect(function()
@@ -248,7 +249,12 @@ end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdingAimKey = true
+        local myRole = getRoleColor(LocalPlayer)
+        if myRole == Colors.Sheriff then
+            holdingAimKey = true
+        elseif myRole == Colors.Murderer then
+            executeBringAll()
+        end
     end
 end)
 
