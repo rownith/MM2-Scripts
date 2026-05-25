@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -8,17 +9,26 @@ local LocalPlayer = Players.LocalPlayer
 local ESPEnabled = true
 local HitboxExpansionEnabled = true
 local AimbotEnabled = true
+local ScriptRunning = true
 local TargetHitboxSize = Vector3.new(15, 15, 15)
-
--- Determine Platform Environment
-local IsMobile = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 
 -- Role Identity Constants
 local Colors = {
     Murderer = Color3.fromRGB(255, 0, 0),
     Sheriff = Color3.fromRGB(0, 0, 255),
-    Innocent = Color3.fromRGB(0, 255, 0)
+    Innocent = Color3.fromRGB(0, 255, 0),
+    DroppedGun = Color3.fromRGB(255, 255, 0)
 }
+
+-- Mobile/Platform Environmental Check
+local IsMobile = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+
+-- Sheriff Real-Time Live Position Tracker Memory
+local LastSheriffPosition = nil
+local DroppedGunLine = Drawing.new("Line")
+local DroppedGunText = Drawing.new("Text")
+DroppedGunText.Center = true
+DroppedGunText.Size = 20
 
 local function getRoleColor(player)
     local char = player.Character
@@ -30,6 +40,11 @@ local function getRoleColor(player)
     else
         return Colors.Innocent
     end
+end
+
+local function cleanDroppedGunESP()
+    DroppedGunLine.Visible = false
+    DroppedGunText.Visible = false
 end
 
 -- UI Master Menu Setup
@@ -46,7 +61,7 @@ end
 
 -- Main Management Panel
 local MainMenu = Instance.new("Frame", ScreenGui)
-MainMenu.Size = UDim2.new(0, 180, 0, 190)
+MainMenu.Size = UDim2.new(0, 180, 0, 230)
 MainMenu.Position = UDim2.new(0, 30, 0, 80)
 MainMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainMenu.BorderSizePixel = 0
@@ -62,14 +77,13 @@ MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MenuTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 MenuTitle.Font = Enum.Font.SourceSansBold
 MenuTitle.TextSize = 16
-
 local TitleCorner = Instance.new("UICorner", MenuTitle)
 TitleCorner.CornerRadius = UDim.new(0, 8)
 
 -- 1. Player ESP Button
 local ESPButton = Instance.new("TextButton", MainMenu)
-ESPButton.Size = UDim2.new(0, 150, 0, 40)
-ESPButton.Position = UDim2.new(0, 15, 0, 50)
+ESPButton.Size = UDim2.new(0, 150, 0, 35)
+ESPButton.Position = UDim2.new(0, 15, 0, 45)
 ESPButton.Text = "Player ESP: ON"
 ESPButton.Font = Enum.Font.SourceSans
 ESPButton.TextSize = 14
@@ -79,8 +93,8 @@ Instance.new("UICorner", ESPButton).CornerRadius = UDim.new(0, 6)
 
 -- 2. Smart Hitbox Toggle Button
 local HitboxButton = Instance.new("TextButton", MainMenu)
-HitboxButton.Size = UDim2.new(0, 150, 0, 40)
-HitboxButton.Position = UDim2.new(0, 15, 0, 95)
+HitboxButton.Size = UDim2.new(0, 150, 0, 35)
+HitboxButton.Position = UDim2.new(0, 15, 0, 85)
 HitboxButton.Text = "Smart Hitbox: ON"
 HitboxButton.Font = Enum.Font.SourceSans
 HitboxButton.TextSize = 14
@@ -90,8 +104,8 @@ Instance.new("UICorner", HitboxButton).CornerRadius = UDim.new(0, 6)
 
 -- 3. Hard Aimbot Toggle Button
 local AimbotButton = Instance.new("TextButton", MainMenu)
-AimbotButton.Size = UDim2.new(0, 150, 0, 40)
-AimbotButton.Position = UDim2.new(0, 15, 0, 140)
+AimbotButton.Size = UDim2.new(0, 150, 0, 35)
+AimbotButton.Position = UDim2.new(0, 15, 0, 125)
 AimbotButton.Text = "Hard Aimbot: ON"
 AimbotButton.Font = Enum.Font.SourceSans
 AimbotButton.TextSize = 14
@@ -99,10 +113,10 @@ AimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 Instance.new("UICorner", AimbotButton).CornerRadius = UDim.new(0, 6)
 
--- 4. Exclusive Murderer "Bring All" Indicator Status Button
+-- Exclusive Murderer "Bring All" Action Button
 local BringAllButton = Instance.new("TextButton", MainMenu)
-BringAllButton.Size = UDim2.new(0, 150, 0, 40)
-BringAllButton.Position = UDim2.new(0, 15, 0, 185)
+BringAllButton.Size = UDim2.new(0, 150, 0, 32)
+BringAllButton.Position = UDim2.new(0, 15, 0, 162)
 BringAllButton.Text = "Press [C] to Bring"
 BringAllButton.Font = Enum.Font.SourceSansBold
 BringAllButton.TextSize = 14
@@ -110,6 +124,22 @@ BringAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 BringAllButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
 BringAllButton.Visible = false
 Instance.new("UICorner", BringAllButton).CornerRadius = UDim.new(0, 6)
+
+-- Universal Emergency Unload Trigger Button
+local UnloadButton = Instance.new("TextButton", MainMenu)
+UnloadButton.Size = UDim2.new(0, 150, 0, 28)
+UnloadButton.Font = Enum.Font.SourceSansBold
+UnloadButton.TextSize = 13
+UnloadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnloadButton.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+UnloadButton.Text = "Unload Script [END]"
+Instance.new("UICorner", UnloadButton).CornerRadius = UDim.new(0, 6)
+
+local executeScriptPurge
+
+UnloadButton.MouseButton1Click:Connect(function()
+    executeScriptPurge()
+end)
 
 -- --- MOBILE MINIMIZE UTILITY ---
 local MinimizeToggle = Instance.new("TextButton", ScreenGui)
@@ -121,10 +151,8 @@ MinimizeToggle.Text = "M"
 MinimizeToggle.Font = Enum.Font.SourceSansBold
 MinimizeToggle.TextSize = 18
 MinimizeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-
 local ToggleCorner = Instance.new("UICorner", MinimizeToggle)
 ToggleCorner.CornerRadius = UDim.new(0, 22.5)
-
 MinimizeToggle.MouseButton1Click:Connect(function()
     MainMenu.Visible = not MainMenu.Visible
 end)
@@ -133,7 +161,6 @@ end)
 local dragToggle = false
 local dragStart = nil
 local startPos = nil
-
 local function updateInput(input)
     local delta = input.Position - dragStart
     local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -145,7 +172,6 @@ MainMenu.InputBegan:Connect(function(input)
         dragToggle = true
         dragStart = input.Position
         startPos = MainMenu.Position
-        
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragToggle = false
@@ -188,7 +214,6 @@ local function executeBringAll()
         if myHrp then
             BringAllButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
             BringAllButton.Text = "BRINGING PLAYERS..."
-            
             for _, targetPlayer in ipairs(Players:GetPlayers()) do
                 if targetPlayer ~= LocalPlayer and targetPlayer.Character then
                     local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -198,7 +223,6 @@ local function executeBringAll()
                     end
                 end
             end
-            
             task.delay(0.4, function()
                 BringAllButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
                 BringAllButton.Text = "Press [C] to Bring"
@@ -206,25 +230,32 @@ local function executeBringAll()
         end
     end
 end
-
 BringAllButton.MouseButton1Click:Connect(executeBringAll)
 
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.Insert then
-        MainMenu.Visible = not MainMenu.Visible
+local insertConnection
+insertConnection = UserInputService.InputBegan:Connect(function(input, processed)
+    if not ScriptRunning then insertConnection:Disconnect() return end
+    if not processed then
+        if input.KeyCode == Enum.KeyCode.Insert then
+            MainMenu.Visible = not MainMenu.Visible
+        elseif input.KeyCode == Enum.KeyCode.End then
+            executeScriptPurge()
+        end
     end
 end)
 
 -- Dynamic UI Visibility Optimization Loop
 task.spawn(function()
-    while true do
-        task.wait(0.5)
+    while task.wait(0.5) do
+        if not ScriptRunning then break end
         if getRoleColor(LocalPlayer) == Colors.Murderer then
             BringAllButton.Visible = true
-            MainMenu.Size = UDim2.new(0, 180, 0, 240)
+            UnloadButton.Position = UDim2.new(0, 15, 0, 198)
+            MainMenu.Size = UDim2.new(0, 180, 0, 235)
         else
             BringAllButton.Visible = false
-            MainMenu.Size = UDim2.new(0, 180, 0, 190)
+            UnloadButton.Position = UDim2.new(0, 15, 0, 165)
+            MainMenu.Size = UDim2.new(0, 180, 0, 200)
         end
     end
 end)
@@ -240,8 +271,27 @@ end
 
 -- --- PLATFORM HYBRID ENGINE ---
 local holdingAimKey = false
-
-RunService.RenderStepped:Connect(function()
+local renderSteppedConnection
+renderSteppedConnection = RunService.RenderStepped:Connect(function()
+    if not ScriptRunning then renderSteppedConnection:Disconnect() return end
+    local activeSheriffExists = false
+    local currentSheriffObj = nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if getRoleColor(p) == Colors.Sheriff then
+            activeSheriffExists = true
+            currentSheriffObj = p
+            break
+        end
+    end
+    if activeSheriffExists then
+        if currentSheriffObj.Character and currentSheriffObj.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHrp = currentSheriffObj.Character.HumanoidRootPart
+            local targetHum = currentSheriffObj.Character:FindFirstChildOfClass("Humanoid")
+            if targetHum and targetHum.Health > 0 then
+                LastSheriffPosition = targetHrp.Position
+            end
+        end
+    end
     if AimbotEnabled and getRoleColor(LocalPlayer) == Colors.Sheriff then
         if IsMobile or holdingAimKey then
             local targetPlayer = getMurderer()
@@ -253,9 +303,28 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+    if ESPEnabled and not activeSheriffExists and LastSheriffPosition then
+        local pos, onScreen = Camera:WorldToViewportPoint(LastSheriffPosition)
+        if onScreen then
+            DroppedGunLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            DroppedGunLine.To = Vector2.new(pos.X, pos.Y)
+            DroppedGunLine.Color = Colors.DroppedGun
+            DroppedGunLine.Visible = true
+            DroppedGunText.Text = "GUN DROPPED HERE"
+            DroppedGunText.Position = Vector2.new(pos.X, pos.Y - 25)
+            DroppedGunText.Color = Colors.DroppedGun
+            DroppedGunText.Visible = true
+        else
+            cleanDroppedGunESP()
+        end
+    else
+        cleanDroppedGunESP()
+    end
 end)
 
-UserInputService.InputBegan:Connect(function(input, processed)
+local combatInputConnection
+combatInputConnection = UserInputService.InputBegan:Connect(function(input, processed)
+    if not ScriptRunning then combatInputConnection:Disconnect() return end
     if not processed then
         if input.UserInputType == Enum.UserInputType.MouseButton2 and getRoleColor(LocalPlayer) == Colors.Sheriff then
             holdingAimKey = true
@@ -265,7 +334,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
+local combatInputEndedConnection
+combatInputEndedConnection = UserInputService.InputEnded:Connect(function(input)
+    if not ScriptRunning then combatInputEndedConnection:Disconnect() return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         holdingAimKey = false
     end
@@ -275,21 +346,19 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.2)
+        if not ScriptRunning then break end
         local myColor = getRoleColor(LocalPlayer)
         local amISheriff = (myColor == Colors.Sheriff)
         local amIMurderer = (myColor == Colors.Murderer)
         local amIInnocent = (myColor == Colors.Innocent)
-        
         for _, targetPlayer in ipairs(Players:GetPlayers()) do
             if targetPlayer ~= LocalPlayer and targetPlayer.Character then
                 local char = targetPlayer.Character
                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                 local hrp = char:FindFirstChild("HumanoidRootPart")
-                
                 if humanoid and humanoid.Health > 0 and hrp then
                     local targetColor = getRoleColor(targetPlayer)
                     local shouldExpand = false
-                    
                     if HitboxExpansionEnabled then
                         if amIMurderer then
                             shouldExpand = true
@@ -297,7 +366,6 @@ task.spawn(function()
                             shouldExpand = false
                         end
                     end
-                    
                     pcall(function()
                         local visualIndicator = hrp:FindFirstChild("HitboxIndicatorMesh")
                         if shouldExpand then
@@ -342,24 +410,20 @@ end)
 
 -- Central Tracker Registry for Player ESP Memory Allocations
 local ActiveESP = {}
-
 local function setupESP(player)
     if player == LocalPlayer then return end
     local line = Drawing.new("Line")
     local text = Drawing.new("Text")
     text.Center = true
     text.Size = 20
-    
     local renderConnection
     local characterAddedConnection
     local backpackConnection = nil
     local highlightInstance = nil
-    
     local function cleanupCharacterESP()
         line.Visible = false
         text.Visible = false
     end
-    
     local function applyHighlight(char)
         if highlightInstance then
             pcall(function() highlightInstance:Destroy() end)
@@ -367,7 +431,6 @@ local function setupESP(player)
         char:WaitForChild("HumanoidRootPart", 5)
         task.wait(0.1)
         if not player.Parent then return end
-        
         highlightInstance = Instance.new("Highlight")
         highlightInstance.Adornee = char
         highlightInstance.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -375,7 +438,6 @@ local function setupESP(player)
         highlightInstance.OutlineTransparency = 0
         highlightInstance.Parent = char
     end
-    
     local function monitorBackpack()
         local bp = player:WaitForChild("Backpack", 5)
         if bp then
@@ -385,17 +447,15 @@ local function setupESP(player)
             end)
         end
     end
-    
     if player.Character then task.spawn(applyHighlight, player.Character) end
     monitorBackpack()
-    
     characterAddedConnection = player.CharacterAdded:Connect(function(char)
         cleanupCharacterESP()
         task.spawn(applyHighlight, char)
         monitorBackpack()
     end)
-    
     renderConnection = RunService.RenderStepped:Connect(function()
+        if not ScriptRunning then renderConnection:Disconnect() return end
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
@@ -407,7 +467,6 @@ local function setupESP(player)
             elseif not highlightInstance or not highlightInstance.Parent then
                 if player.Character then task.spawn(applyHighlight, player.Character) end
             end
-            
             if ESPEnabled and hrp then
                 local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
@@ -430,7 +489,6 @@ local function setupESP(player)
             if highlightInstance then highlightInstance.Enabled = false end
         end
     end)
-    
     ActiveESP[player] = {
         Render = renderConnection,
         CharAdded = characterAddedConnection,
@@ -455,6 +513,29 @@ local function removeESP(player)
     end
 end
 
+-- Universal Unload Master Function Execution Body
+function executeScriptPurge()
+    ScriptRunning = false
+    task.wait(0.1)
+    pcall(function() ScreenGui:Destroy() end)
+    pcall(function() DroppedGunLine:Remove() end)
+    pcall(function() DroppedGunText:Remove() end)
+    for _, player in ipairs(Players:GetPlayers()) do removeESP(player) end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.Size = Vector3.new(2, 2, 1)
+                hrp.CanCollide = true
+                local mesh = hrp:FindFirstChild("HitboxIndicatorMesh")
+                if mesh then mesh:Destroy() end
+            end
+            local hl = player.Character:FindFirstChildOfClass("Highlight")
+            if hl then hl:Destroy() end
+        end
+    end
+end
+
 local function setupLocalPlayer()
     local bp = LocalPlayer:WaitForChild("Backpack", 5)
     if bp then
@@ -470,8 +551,6 @@ end
 task.spawn(setupLocalPlayer)
 
 -- Runtime Initialization Sequences
-for _, player in ipairs(Players:GetPlayers()) do
-    setupESP(player)
-end
+for _, player in ipairs(Players:GetPlayers()) do setupESP(player) end
 Players.PlayerAdded:Connect(setupESP)
 Players.PlayerRemoving:Connect(removeESP)
