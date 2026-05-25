@@ -274,15 +274,27 @@ local holdingAimKey = false
 local renderSteppedConnection
 renderSteppedConnection = RunService.RenderStepped:Connect(function()
     if not ScriptRunning then renderSteppedConnection:Disconnect() return end
+
     local activeSheriffExists = false
+    local activeMurdererExists = false
     local currentSheriffObj = nil
+    
+    -- Evaluate current active matches
     for _, p in ipairs(Players:GetPlayers()) do
-        if getRoleColor(p) == Colors.Sheriff then
+        local role = getRoleColor(p)
+        if role == Colors.Sheriff then
             activeSheriffExists = true
             currentSheriffObj = p
-            break
+        elseif role == Colors.Murderer then
+            activeMurdererExists = true
         end
     end
+
+    -- ROUND CHECK CLEANER: If no active murderer/sheriff exists, the round has ended.
+    if not activeMurdererExists and not activeSheriffExists then
+        LastSheriffPosition = nil
+    end
+
     if activeSheriffExists then
         if currentSheriffObj.Character and currentSheriffObj.Character:FindFirstChild("HumanoidRootPart") then
             local targetHrp = currentSheriffObj.Character.HumanoidRootPart
@@ -292,6 +304,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
             end
         end
     end
+    
     if AimbotEnabled and getRoleColor(LocalPlayer) == Colors.Sheriff then
         if IsMobile or holdingAimKey then
             local targetPlayer = getMurderer()
@@ -303,6 +316,8 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
             end
         end
     end
+    
+    -- Yellow line render frame
     if ESPEnabled and not activeSheriffExists and LastSheriffPosition then
         local pos, onScreen = Camera:WorldToViewportPoint(LastSheriffPosition)
         if onScreen then
@@ -310,7 +325,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
             DroppedGunLine.To = Vector2.new(pos.X, pos.Y)
             DroppedGunLine.Color = Colors.DroppedGun
             DroppedGunLine.Visible = true
-            DroppedGunText.Text = "GUN DROPPED HERE"
+            DroppedGunText.Text = "TAE NI BOYOT NATAGAK DRE"
             DroppedGunText.Position = Vector2.new(pos.X, pos.Y - 25)
             DroppedGunText.Color = Colors.DroppedGun
             DroppedGunText.Visible = true
@@ -541,7 +556,7 @@ local function setupLocalPlayer()
     if bp then
         bp.ChildAdded:Connect(function() task.wait(0.05) end)
     end
-    LocalPlayer.CharacterAdded:Connect(function()
+    LocalPlayer.CharacterAdded:Connect(function(char)
         local newBp = LocalPlayer:WaitForChild("Backpack", 5)
         if newBp then
             newBp.ChildAdded:Connect(function() task.wait(0.05) end)
