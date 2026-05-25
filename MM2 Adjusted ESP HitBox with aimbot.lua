@@ -10,7 +10,7 @@ local ESPEnabled = true
 local HitboxExpansionEnabled = true
 local AimbotEnabled = true
 local ScriptRunning = true
-local TargetHitboxSize = Vector3.new(15, 15, 15)
+local TargetHitboxSize = Vector3.new(8, 8, 8)
 
 -- Role Identity Constants
 local Colors = {
