@@ -5,11 +5,11 @@ local Workspace = game:GetService("Workspace")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Global Configuration States
+-- Global Configuration States (Silent Aim fully removed)
 local ESPEnabled = true
 local HitboxExpansionEnabled = true
-local AimbotEnabled = true
 local NoclipEnabled = false
+local InfiniteJumpEnabled = false -- New Infinite Jump state tracker
 local ScriptRunning = true
 local TargetHitboxSize = Vector3.new(8, 8, 8)
 
@@ -60,7 +60,7 @@ if not success then
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Main Management Panel
+-- Main Management Panel Window Frame (Height updated to 265 for proper layout scaling)
 local MainMenu = Instance.new("Frame", ScreenGui)
 MainMenu.Size = UDim2.new(0, 180, 0, 265)
 MainMenu.Position = UDim2.new(0, 30, 0, 80)
@@ -104,21 +104,10 @@ HitboxButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 Instance.new("UICorner", HitboxButton).CornerRadius = UDim.new(0, 6)
 
--- 3. Hard Aimbot Toggle Button
-local AimbotButton = Instance.new("TextButton", MainMenu)
-AimbotButton.Size = UDim2.new(0, 150, 0, 35)
-AimbotButton.Position = UDim2.new(0, 15, 0, 125)
-AimbotButton.Text = "Hard Aimbot: ON"
-AimbotButton.Font = Enum.Font.SourceSans
-AimbotButton.TextSize = 14
-AimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-Instance.new("UICorner", AimbotButton).CornerRadius = UDim.new(0, 6)
-
--- 4. Advanced Noclip Toggle Button
+-- 3. Advanced Noclip Toggle Button (Shifted up to offset 125)
 local NoclipButton = Instance.new("TextButton", MainMenu)
 NoclipButton.Size = UDim2.new(0, 150, 0, 35)
-NoclipButton.Position = UDim2.new(0, 15, 0, 165)
+NoclipButton.Position = UDim2.new(0, 15, 0, 125)
 NoclipButton.Text = "Noclip: OFF"
 NoclipButton.Font = Enum.Font.SourceSans
 NoclipButton.TextSize = 14
@@ -126,7 +115,18 @@ NoclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 NoclipButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 Instance.new("UICorner", NoclipButton).CornerRadius = UDim.new(0, 6)
 
--- Exclusive Murderer "Bring All" Action Button
+-- 4. Infinite Jump Toggle Button (Positioned cleanly at offset 165)
+local InfJumpButton = Instance.new("TextButton", MainMenu)
+InfJumpButton.Size = UDim2.new(0, 150, 0, 35)
+InfJumpButton.Position = UDim2.new(0, 15, 0, 165)
+InfJumpButton.Text = "Infinite Jump: OFF"
+InfJumpButton.Font = Enum.Font.SourceSans
+InfJumpButton.TextSize = 14
+InfJumpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfJumpButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Instance.new("UICorner", InfJumpButton).CornerRadius = UDim.new(0, 6)
+
+-- Exclusive Murderer "Bring All" Action Button (Shifted down layout to offset 205)
 local BringAllButton = Instance.new("TextButton", MainMenu)
 BringAllButton.Size = UDim2.new(0, 150, 0, 32)
 BringAllButton.Position = UDim2.new(0, 15, 0, 205)
@@ -153,7 +153,7 @@ UnloadButton.MouseButton1Click:Connect(function()
     executeScriptPurge()
 end)
 
--- --- MOBILE MINIMIZE UTILITY ---
+-- --- MOBILE PANEL MINIMIZE ICON UTILITY ---
 local MinimizeToggle = Instance.new("TextButton", ScreenGui)
 MinimizeToggle.Size = UDim2.new(0, 45, 0, 45)
 MinimizeToggle.Position = UDim2.new(0, 15, 0, 15)
@@ -170,7 +170,7 @@ MinimizeToggle.MouseButton1Click:Connect(function()
     MainMenu.Visible = not MainMenu.Visible
 end)
 
--- --- UI DRAGGING MODULE ---
+-- --- MASTER UI DRAGGING MODULE ---
 local dragToggle = false
 local dragStart = nil
 local startPos = nil
@@ -202,7 +202,7 @@ MainMenu.InputChanged:Connect(function(input)
     end
 end)
 
--- Interactive UI Signals
+-- Synchronized Toggle Value Core Operations
 ESPButton.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     ESPButton.Text = ESPEnabled and "Player ESP: ON" or "Player ESP: OFF"
@@ -215,16 +215,16 @@ HitboxButton.MouseButton1Click:Connect(function()
     HitboxButton.BackgroundColor3 = HitboxExpansionEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
-AimbotButton.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    AimbotButton.Text = AimbotEnabled and "Hard Aimbot: ON" or "Hard Aimbot: OFF"
-    AimbotButton.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-end)
-
 NoclipButton.MouseButton1Click:Connect(function()
     NoclipEnabled = not NoclipEnabled
     NoclipButton.Text = NoclipEnabled and "Noclip: ON" or "Noclip: OFF"
     NoclipButton.BackgroundColor3 = NoclipEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
+
+InfJumpButton.MouseButton1Click:Connect(function()
+    InfiniteJumpEnabled = not InfiniteJumpEnabled
+    InfJumpButton.Text = InfiniteJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
+    InfJumpButton.BackgroundColor3 = InfiniteJumpEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
 -- Core Function to Teleport All Players with Button Flash
@@ -265,7 +265,7 @@ insertConnection = UserInputService.InputBegan:Connect(function(input, processed
     end
 end)
 
--- Dynamic UI Visibility Optimization Loop
+-- Dynamic UI Visibility Loop Configuration
 task.spawn(function()
     while task.wait(0.5) do
         if not ScriptRunning then break end
@@ -281,17 +281,7 @@ task.spawn(function()
     end
 end)
 
-local function getMurderer()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and getRoleColor(p) == Colors.Murderer then
-            return p
-        end
-    end
-    return nil
-end
-
--- --- PLATFORM HYBRID ENGINE ---
-local holdingAimKey = false
+-- Render Stepped Processing Logic Layer
 local renderSteppedConnection
 renderSteppedConnection = RunService.RenderStepped:Connect(function()
     if not ScriptRunning then renderSteppedConnection:Disconnect() return end
@@ -299,7 +289,6 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
     local activeMurdererExists = false
     local currentSheriffObj = nil
 
-    -- Evaluate current active matches
     for _, p in ipairs(Players:GetPlayers()) do
         local role = getRoleColor(p)
         if role == Colors.Sheriff then
@@ -310,7 +299,6 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ROUND CHECK CLEANER
     if not activeMurdererExists and not activeSheriffExists then
         LastSheriffPosition = nil
     end
@@ -325,19 +313,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
         end
     end
 
-    if AimbotEnabled and getRoleColor(LocalPlayer) == Colors.Sheriff then
-        if IsMobile or holdingAimKey then
-            local targetPlayer = getMurderer()
-            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = targetPlayer.Character.HumanoidRootPart
-                if targetPlayer.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, hrp.Position)
-                end
-            end
-        end
-    end
-
-    -- Yellow line render frame
+    -- Yellow dropped gun line tracker update frame
     if ESPEnabled and not activeSheriffExists and LastSheriffPosition then
         local pos, onScreen = Camera:WorldToViewportPoint(LastSheriffPosition)
         if onScreen then
@@ -361,19 +337,9 @@ local combatInputConnection
 combatInputConnection = UserInputService.InputBegan:Connect(function(input, processed)
     if not ScriptRunning then combatInputConnection:Disconnect() return end
     if not processed then
-        if input.UserInputType == Enum.UserInputType.MouseButton2 and getRoleColor(LocalPlayer) == Colors.Sheriff then
-            holdingAimKey = true
-        elseif input.KeyCode == Enum.KeyCode.C and getRoleColor(LocalPlayer) == Colors.Murderer then
+        if input.KeyCode == Enum.KeyCode.C and getRoleColor(LocalPlayer) == Colors.Murderer then
             executeBringAll()
         end
-    end
-end)
-
-local combatInputEndedConnection
-combatInputEndedConnection = UserInputService.InputEnded:Connect(function(input)
-    if not ScriptRunning then combatInputEndedConnection:Disconnect() return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdingAimKey = false
     end
 end)
 
@@ -386,7 +352,6 @@ task.spawn(function()
         local amISheriff = (myColor == Colors.Sheriff)
         local amIMurderer = (myColor == Colors.Murderer)
         local amIInnocent = (myColor == Colors.Innocent)
-
         for _, targetPlayer in ipairs(Players:GetPlayers()) do
             if targetPlayer ~= LocalPlayer and targetPlayer.Character then
                 local char = targetPlayer.Character
@@ -422,9 +387,7 @@ task.spawn(function()
                             hrp.Size = Vector3.new(2, 2, 1)
                             hrp.CanCollide = true
                             hrp.Transparency = 1
-                            if visualIndicator then
-                                visualIndicator:Destroy()
-                            end
+                            if visualIndicator then visualIndicator:Destroy() end
                         end
                     end)
                 end
@@ -461,6 +424,18 @@ task.spawn(function()
     end
 end)
 
+-- --- HIGH-STABILITY NATIVE INFINITE JUMP ENGINE ---
+local jumpConnection
+jumpConnection = UserInputService.JumpRequest:Connect(function()
+    if not ScriptRunning then jumpConnection:Disconnect() return end
+    if InfiniteJumpEnabled and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
 -- Central Tracker Registry for Player ESP Memory Allocations
 local ActiveESP = {}
 local function setupESP(player)
@@ -469,17 +444,16 @@ local function setupESP(player)
     local text = Drawing.new("Text")
     text.Center = true
     text.Size = 20
-    
     local renderConnection
     local characterAddedConnection
     local backpackConnection = nil
     local highlightInstance = nil
-
+    
     local function cleanupCharacterESP()
         line.Visible = false
         text.Visible = false
     end
-
+    
     local function applyHighlight(char)
         if highlightInstance then
             pcall(function() highlightInstance:Destroy() end)
@@ -527,7 +501,6 @@ local function setupESP(player)
             elseif not highlightInstance or not highlightInstance.Parent then
                 if player.Character then task.spawn(applyHighlight, player.Character) end
             end
-
             if ESPEnabled and hrp then
                 local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
@@ -614,6 +587,9 @@ end
 task.spawn(setupLocalPlayer)
 
 -- Runtime Initialization Sequences
-for _, player in ipairs(Players:GetPlayers()) do setupESP(player) end
+for _, player in ipairs(Players:GetPlayers()) do 
+    setupESP(player) 
+end
+
 Players.PlayerAdded:Connect(setupESP)
 Players.PlayerRemoving:Connect(removeESP)
