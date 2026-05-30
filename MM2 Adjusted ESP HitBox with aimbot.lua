@@ -9,6 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 local ESPEnabled = true
 local HitboxExpansionEnabled = true
 local AimbotEnabled = true
+local NoclipEnabled = false
 local ScriptRunning = true
 local TargetHitboxSize = Vector3.new(8, 8, 8)
 
@@ -61,7 +62,7 @@ end
 
 -- Main Management Panel
 local MainMenu = Instance.new("Frame", ScreenGui)
-MainMenu.Size = UDim2.new(0, 180, 0, 230)
+MainMenu.Size = UDim2.new(0, 180, 0, 265)
 MainMenu.Position = UDim2.new(0, 30, 0, 80)
 MainMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainMenu.BorderSizePixel = 0
@@ -77,6 +78,7 @@ MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MenuTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 MenuTitle.Font = Enum.Font.SourceSansBold
 MenuTitle.TextSize = 16
+
 local TitleCorner = Instance.new("UICorner", MenuTitle)
 TitleCorner.CornerRadius = UDim.new(0, 8)
 
@@ -113,10 +115,21 @@ AimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 Instance.new("UICorner", AimbotButton).CornerRadius = UDim.new(0, 6)
 
+-- 4. Advanced Noclip Toggle Button
+local NoclipButton = Instance.new("TextButton", MainMenu)
+NoclipButton.Size = UDim2.new(0, 150, 0, 35)
+NoclipButton.Position = UDim2.new(0, 15, 0, 165)
+NoclipButton.Text = "Noclip: OFF"
+NoclipButton.Font = Enum.Font.SourceSans
+NoclipButton.TextSize = 14
+NoclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Instance.new("UICorner", NoclipButton).CornerRadius = UDim.new(0, 6)
+
 -- Exclusive Murderer "Bring All" Action Button
 local BringAllButton = Instance.new("TextButton", MainMenu)
 BringAllButton.Size = UDim2.new(0, 150, 0, 32)
-BringAllButton.Position = UDim2.new(0, 15, 0, 162)
+BringAllButton.Position = UDim2.new(0, 15, 0, 205)
 BringAllButton.Text = "Press [C] to Bring"
 BringAllButton.Font = Enum.Font.SourceSansBold
 BringAllButton.TextSize = 14
@@ -136,7 +149,6 @@ UnloadButton.Text = "Unload Script [END]"
 Instance.new("UICorner", UnloadButton).CornerRadius = UDim.new(0, 6)
 
 local executeScriptPurge
-
 UnloadButton.MouseButton1Click:Connect(function()
     executeScriptPurge()
 end)
@@ -153,6 +165,7 @@ MinimizeToggle.TextSize = 18
 MinimizeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 local ToggleCorner = Instance.new("UICorner", MinimizeToggle)
 ToggleCorner.CornerRadius = UDim.new(0, 22.5)
+
 MinimizeToggle.MouseButton1Click:Connect(function()
     MainMenu.Visible = not MainMenu.Visible
 end)
@@ -161,6 +174,7 @@ end)
 local dragToggle = false
 local dragStart = nil
 local startPos = nil
+
 local function updateInput(input)
     local delta = input.Position - dragStart
     local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -207,6 +221,12 @@ AimbotButton.MouseButton1Click:Connect(function()
     AimbotButton.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
+NoclipButton.MouseButton1Click:Connect(function()
+    NoclipEnabled = not NoclipEnabled
+    NoclipButton.Text = NoclipEnabled and "Noclip: ON" or "Noclip: OFF"
+    NoclipButton.BackgroundColor3 = NoclipEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
+
 -- Core Function to Teleport All Players with Button Flash
 local function executeBringAll()
     if getRoleColor(LocalPlayer) == Colors.Murderer and LocalPlayer.Character then
@@ -230,6 +250,7 @@ local function executeBringAll()
         end
     end
 end
+
 BringAllButton.MouseButton1Click:Connect(executeBringAll)
 
 local insertConnection
@@ -250,12 +271,12 @@ task.spawn(function()
         if not ScriptRunning then break end
         if getRoleColor(LocalPlayer) == Colors.Murderer then
             BringAllButton.Visible = true
-            UnloadButton.Position = UDim2.new(0, 15, 0, 198)
-            MainMenu.Size = UDim2.new(0, 180, 0, 235)
+            UnloadButton.Position = UDim2.new(0, 15, 0, 242)
+            MainMenu.Size = UDim2.new(0, 180, 0, 280)
         else
             BringAllButton.Visible = false
-            UnloadButton.Position = UDim2.new(0, 15, 0, 165)
-            MainMenu.Size = UDim2.new(0, 180, 0, 200)
+            UnloadButton.Position = UDim2.new(0, 15, 0, 205)
+            MainMenu.Size = UDim2.new(0, 180, 0, 245)
         end
     end
 end)
@@ -274,11 +295,10 @@ local holdingAimKey = false
 local renderSteppedConnection
 renderSteppedConnection = RunService.RenderStepped:Connect(function()
     if not ScriptRunning then renderSteppedConnection:Disconnect() return end
-
     local activeSheriffExists = false
     local activeMurdererExists = false
     local currentSheriffObj = nil
-    
+
     -- Evaluate current active matches
     for _, p in ipairs(Players:GetPlayers()) do
         local role = getRoleColor(p)
@@ -290,7 +310,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ROUND CHECK CLEANER: If no active murderer/sheriff exists, the round has ended.
+    -- ROUND CHECK CLEANER
     if not activeMurdererExists and not activeSheriffExists then
         LastSheriffPosition = nil
     end
@@ -304,7 +324,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
+
     if AimbotEnabled and getRoleColor(LocalPlayer) == Colors.Sheriff then
         if IsMobile or holdingAimKey then
             local targetPlayer = getMurderer()
@@ -316,7 +336,7 @@ renderSteppedConnection = RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
+
     -- Yellow line render frame
     if ESPEnabled and not activeSheriffExists and LastSheriffPosition then
         local pos, onScreen = Camera:WorldToViewportPoint(LastSheriffPosition)
@@ -366,6 +386,7 @@ task.spawn(function()
         local amISheriff = (myColor == Colors.Sheriff)
         local amIMurderer = (myColor == Colors.Murderer)
         local amIInnocent = (myColor == Colors.Innocent)
+
         for _, targetPlayer in ipairs(Players:GetPlayers()) do
             if targetPlayer ~= LocalPlayer and targetPlayer.Character then
                 local char = targetPlayer.Character
@@ -423,6 +444,23 @@ task.spawn(function()
     end
 end)
 
+-- --- ACCELERATED NOCLIP ENGINE THREAD ---
+task.spawn(function()
+    while true do
+        RunService.Stepped:Wait()
+        if not ScriptRunning then break end
+        if NoclipEnabled and LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    pcall(function()
+                        part.CanCollide = false
+                    end)
+                end
+            end
+        end
+    end
+end)
+
 -- Central Tracker Registry for Player ESP Memory Allocations
 local ActiveESP = {}
 local function setupESP(player)
@@ -431,14 +469,17 @@ local function setupESP(player)
     local text = Drawing.new("Text")
     text.Center = true
     text.Size = 20
+    
     local renderConnection
     local characterAddedConnection
     local backpackConnection = nil
     local highlightInstance = nil
+
     local function cleanupCharacterESP()
         line.Visible = false
         text.Visible = false
     end
+
     local function applyHighlight(char)
         if highlightInstance then
             pcall(function() highlightInstance:Destroy() end)
@@ -453,6 +494,7 @@ local function setupESP(player)
         highlightInstance.OutlineTransparency = 0
         highlightInstance.Parent = char
     end
+
     local function monitorBackpack()
         local bp = player:WaitForChild("Backpack", 5)
         if bp then
@@ -462,13 +504,16 @@ local function setupESP(player)
             end)
         end
     end
+
     if player.Character then task.spawn(applyHighlight, player.Character) end
     monitorBackpack()
+
     characterAddedConnection = player.CharacterAdded:Connect(function(char)
         cleanupCharacterESP()
         task.spawn(applyHighlight, char)
         monitorBackpack()
     end)
+
     renderConnection = RunService.RenderStepped:Connect(function()
         if not ScriptRunning then renderConnection:Disconnect() return end
         local char = player.Character
@@ -482,6 +527,7 @@ local function setupESP(player)
             elseif not highlightInstance or not highlightInstance.Parent then
                 if player.Character then task.spawn(applyHighlight, player.Character) end
             end
+
             if ESPEnabled and hrp then
                 local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
@@ -504,6 +550,7 @@ local function setupESP(player)
             if highlightInstance then highlightInstance.Enabled = false end
         end
     end)
+
     ActiveESP[player] = {
         Render = renderConnection,
         CharAdded = characterAddedConnection,
@@ -563,6 +610,7 @@ local function setupLocalPlayer()
         end
     end)
 end
+
 task.spawn(setupLocalPlayer)
 
 -- Runtime Initialization Sequences
